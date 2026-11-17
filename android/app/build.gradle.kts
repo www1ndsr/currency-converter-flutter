@@ -7,7 +7,7 @@ plugins {
 android {
     namespace = "com.student.currencyconverter.currency_converter_flutter"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

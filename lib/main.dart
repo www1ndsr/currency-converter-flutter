@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'app/app.dart';
 import 'data/repositories/exchange_rate_repository.dart';
 import 'domain/services/conversion_service.dart';
@@ -9,8 +10,9 @@ import 'features/converter/screens/converter_screen.dart';
 import 'features/settings/screens/settings_screen.dart';
 import 'features/shell/main_shell_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ru', null);
 
   final repository = ExchangeRateRepository();
   final conversionService = ConversionService();
