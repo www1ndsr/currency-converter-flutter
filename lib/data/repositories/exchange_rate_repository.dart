@@ -2,6 +2,8 @@ import '../models/historical_rate_point.dart';
 import '../models/rate_snapshot.dart';
 import '../services/bnm_api_service.dart';
 import '../services/cache_service.dart';
+import '../../core/constants/seed_data.dart';
+import '../../core/constants/seed_history.dart';
 import '../../core/errors/app_exceptions.dart';
 
 class ExchangeRateRepository {
@@ -29,6 +31,18 @@ class ExchangeRateRepository {
       }
 
       // No cache available to fallback to
+      // Last resort: use built-in seed data (real BNM rates, pre-fetched)
+      try {
+        final seedSnapshot = _apiService.parseXmlRates(
+          xmlBody: kBnmSeedXml,
+          requestedDate: DateTime(2026, 11, 18),
+        );
+        final seedCached = seedSnapshot.copyWith(isFromCache: true);
+        // Save seed to cache so subsequent loads are faster
+        await _cacheService.saveLatestSnapshot(seedCached);
+        return seedCached;
+      } catch (_) {}
+
       if (e is AppException) {
         throw CacheNotFoundException(
           'Сеть недоступна, а локальный кэш отсутствует: ${e.userMessage}',
@@ -72,6 +86,13 @@ class ExchangeRateRepository {
       if (cachedPoints != null && cachedPoints.isNotEmpty) {
         final count = cachedPoints.length >= days ? days : cachedPoints.length;
         return cachedPoints.sublist(cachedPoints.length - count);
+      }
+
+      // Last resort: use built-in seed history (real BNM data)
+      final seedPoints = SeedHistory.getPoints(code);
+      if (seedPoints.isNotEmpty) {
+        final count = seedPoints.length >= days ? days : seedPoints.length;
+        return seedPoints.sublist(seedPoints.length - count);
       }
 
       if (e is AppException) rethrow;

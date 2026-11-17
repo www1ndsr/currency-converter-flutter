@@ -1,17 +1,197 @@
-# currency_converter_flutter
+# BNM Currency Converter (Flutter & Dart)
 
-A new Flutter project.
+Полноценное кроссплатформенное мобильное приложение для конвертации валют и финансовой аналитики котировок Национального банка Молдовы (Banca Națională a Moldovei — BNM).
 
-## Getting Started
+Разработано в рамках **Лабораторной работы №4** по дисциплине «Программирование мобильных приложений» (Вариант Б).
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## 1. О проекте
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Приложение обеспечивает получение официальных курсов валют Национального банка Молдовы в реальном времени, выполняет взаимную конвертацию любых поддерживаемых валют с высокой точностью (без погрешностей чисел с плавающей точкой) и предоставляет аналитические экраны для оценки динамики курсов за последние 7 и 30 календарных дней с интерактивными графиками и расчетом математических метрик.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Ключевые возможности:
+- **Официальные котировки BNM**: получение данных через XML API Национального банка Молдовы.
+- **Точные денежные вычисления**: использование библиотеки `decimal` и вычисления без потерь точности `double`.
+- **Конвертер валют**: ввод любых положительных сумм (с валидацией точки и запятой), быстрый обмен валют местами (Swap), выбор из полного перечня валют BNM.
+- **Аналитика за 7 дней**: динамика курса за последнюю неделю, интерактивный график `fl_chart`, минимум, максимум, среднее значение, абсолютное и процентное изменение, математически рассчитанный тренд (Рост / Падение / Без изменений).
+- **Аналитика за 30 дней**: исторический анализ за месяц на базе единого сервиса статистики.
+- **Персистентный офлайн-кэш**: надежное локальное сохранение снимков курсов и истории в `shared_preferences` с JSON-сериализацией. Приложение сохраняет полную работоспособность без подключения к сети.
+- **Индикация актуальности**: четкое визуальное разделение актуальных онлайн-данных и кэшированных данных с отображением точной даты действия курса.
+- **Адаптивный fintech-дизайн**: современный интерфейс в стиле Material 3 с мягкими скруглениями, удобной навигацией и оптимизацией под экраны мобильных устройств и Web (Chrome).
+
+---
+
+## 2. Стек технологий
+
+- **Платформа**: Android (основная целевая платформа), Web (Google Chrome для разработки и отладки).
+- **Язык программирования**: Dart (SDK ^3.14.0 / 3.50.0).
+- **Фреймворк**: Flutter (Material 3).
+- **Архитектура**: Clean Architecture (разделение на слои Core, Data, Domain, Features).
+- **Основные зависимости**:
+  - `http`: выполнение HTTP-запросов к серверу BNM с контролем таймаутов.
+  - `xml`: потоковый и DOM-парсинг официальных XML-ответов BNM.
+  - `fl_chart`: построение интерактивных векторных графиков курсов валют.
+  - `shared_preferences`: персистентное локальное хранение кэша котировок и истории.
+  - `decimal`: точные арифметические операции над финансовыми величинами.
+  - `intl`: локализованное форматирование дат и чисел.
+  - `flutter_test`, `http/testing`: исчерпывающее тестирование (39 unit- и widget-тестов).
+
+---
+
+## 3. Архитектура приложения
+
+Проект организован в соответствии с принципами чистой архитектуры:
+
+```text
+lib/
+├── main.dart                                    # Точка входа в приложение, DI сервисов
+├── app/
+│   ├── app.dart                                 # Корневой MaterialApp виджет
+│   └── app_theme.dart                           # Тема оформления в стиле Fintech (Material 3)
+├── core/
+│   ├── constants/
+│   │   ├── app_colors.dart                      # Цветовая палитра, индикаторы трендов
+│   │   └── app_constants.dart                   # Константы (URL BNM, таймауты, валюты)
+│   ├── errors/
+│   │   └── app_exceptions.dart                  # Иерархия типизированных исключений
+│   ├── utils/
+│   │   └── date_formatter.dart                  # Утилиты форматирования дат BNM API и UI
+│   └── widgets/
+│       ├── error_view.dart                      # Переиспользуемый виджет ошибки с повтором
+│       ├── loading_view.dart                    # Индикатор загрузки с пояснением
+│       └── status_badge.dart                    # Бейдж источника (Online BNM / Offline Cache)
+├── data/
+│   ├── models/
+│   │   ├── exchange_rate.dart                   # Модель курса валюты (номинал, Value, ratePerUnit)
+│   │   ├── rate_snapshot.dart                   # Снимок котировок на конкретную дату
+│   │   └── historical_rate_point.dart           # Точка исторического ряда котировок
+│   ├── services/
+│   │   ├── bnm_api_service.dart                 # Клиент BNM API, XML-парсер, обработка дат
+│   │   └── cache_service.dart                   # Персистентное кэширование в SharedPreferences
+│   └── repositories/
+│       └── exchange_rate_repository.dart        # Репозиторий с сетевым источником и fallback к кэшу
+├── domain/
+│   ├── services/
+│   │   ├── conversion_service.dart              # Бизнес-логика конвертации (Decimal)
+│   │   └── statistics_service.dart              # Расчет min, max, avg, % и abs изменений, тренда
+│   └── validators/
+│       └── amount_validator.dart                # Валидация пользовательского ввода сумм
+└── features/
+    ├── converter/
+    │   ├── screens/
+    │   │   └── converter_screen.dart            # Главный экран конвертера валют
+    │   └── widgets/
+    │       ├── conversion_result_card.dart      # Карточка с прямым/обратным курсом и датой
+    │       └── currency_picker_sheet.dart       # Модальный выбор валюты с поиском
+    ├── analytics/
+    │   ├── screens/
+    │   │   ├── weekly_analytics_screen.dart     # Экран аналитики за последние 7 дней
+    │   │   └── monthly_analytics_screen.dart    # Экран аналитики за последние 30 дней
+    │   └── widgets/
+    │       ├── analytics_view.dart              # Базовый переиспользуемый экран аналитики
+    │       ├── historical_chart_card.dart       # График fl_chart с градиентом и тултипом
+    │       └── statistics_metrics_grid.dart     # Сетка карточек метрик и тренда
+    ├── settings/
+    │   └── screens/
+    │       └── settings_screen.dart             # Информация о BNM, формулах и статусе кэша
+    └── shell/
+        └── main_shell_screen.dart               # Главный контейнер с NavigationBar
+```
+
+---
+
+## 4. Источник данных BNM и математика расчета
+
+Официальный endpoint Национального банка Молдовы:
+```text
+https://www.bnm.md/en/official_exchange_rates?get_xml=1&date=DD.MM.YYYY
+```
+
+Формат XML:
+```xml
+<ValCurs Date="15.11.2024" name="Official exchange rate">
+  <Valute ID="47">
+    <NumCode>978</NumCode>
+    <CharCode>EUR</CharCode>
+    <Nominal>1</Nominal>
+    <Name>Euro</Name>
+    <Value>19.0274</Value>
+  </Valute>
+</ValCurs>
+```
+
+### Формулы:
+1. **Курс одной единицы валюты к молдавскому лею**:
+   $$\text{ratePerUnit} = \frac{\text{Value}}{\text{Nominal}}$$
+   Базовая валюта `MDL` добавляется в коллекцию с курсом $\text{ratePerUnit} = 1.00$.
+
+2. **Кросс-конвертация между произвольными валютами**:
+   $$\text{targetAmount} = \text{amount} \times \frac{\text{sourceRatePerUnit}}{\text{targetRatePerUnit}}$$
+
+3. **Статистические показатели динамики**:
+   - $\text{absoluteChange} = \text{lastValue} - \text{firstValue}$
+   - $\text{percentageChange} = \frac{\text{lastValue} - \text{firstValue}}{\text{firstValue}} \times 100$
+   - Направление тенденции:
+     - **Рост**: $\text{lastValue} > \text{firstValue}$
+     - **Падение**: $\text{lastValue} < \text{firstValue}$
+     - **Без изменений**: $\text{lastValue} = \text{firstValue}$
+
+---
+
+## 5. Офлайн-режим и локальный кэш
+
+- При каждом успешном получении ответа от сервера BNM данные автоматически сериализуются в JSON и сохраняются в `SharedPreferences`.
+- Если сеть недоступна или произошел таймаут, репозиторий автоматически восстанавливает последний сохраненный снимок.
+- На интерфейсе явно отображается бейдж `Кэш (офлайн) • курс на DD.MM.YYYY` с датой актуальности сохраненных данных.
+- Предусмотрена защита от поврежденного JSON-кэша без аварийного завершения работы приложения.
+- На экране «Инфо» доступна ручная очистка кэша.
+
+---
+
+## 6. Запуск и тестирование проекта
+
+### Установка зависимостей:
+```bash
+flutter pub get
+```
+
+### Статический анализ кода:
+```bash
+flutter analyze
+```
+
+### Запуск unit- и widget-тестов:
+```bash
+flutter test
+```
+*В проекте реализовано 39 тестов, покрывающих 100% критических компонентов.*
+
+### Запуск в Google Chrome (веб-версия для разработки):
+```bash
+flutter run -d chrome
+```
+
+### Запуск на Android (эмулятор или подключенное устройство):
+```bash
+# Проверить доступные устройства
+flutter devices
+
+# Запустить эмулятор (если не запущен)
+flutter emulators --launch Pixel_8
+
+# Запустить приложение
+flutter run
+```
+
+---
+
+## 7. История Git и процесс разработки
+
+Разработка велась поэтапно с разделением на специализированные ветки:
+1. `lab4-foundation`: инициализация каркаса, тема Fintech Material 3, разрешения Android (`INTERNET`), базовая навигация.
+2. `lab4-data-layer`: модели `ExchangeRate`, `RateSnapshot`, `HistoricalRatePoint`, парсер XML `BnmApiService`, `CacheService`, `ExchangeRateRepository`.
+3. `lab4-converter`: валидатор ввода `AmountValidator`, финансовый сервис `ConversionService`, экран `ConverterScreen` с модальным пикером валют и карточкой результатов.
+4. `lab4-analytics`: сервис статистики `StatisticsService`, интерактивный график `fl_chart`, сетка метрик, экраны аналитики за 7 и 30 дней, экран информации `SettingsScreen`.
+5. `lab4-tests`: 39 тестов (парсер XML, валидация, расчет статистики, конвертер, кэш, mock-репозиторий, тест виджетов).
+6. `lab4-documentation`: составление `README.md` и подробного академического отчета `REPORT.md`.

@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:decimal/decimal.dart';
-import 'package:currency_converter_flutter/core/errors/app_exceptions.dart';
 import 'package:currency_converter_flutter/data/models/exchange_rate.dart';
 import 'package:currency_converter_flutter/data/models/rate_snapshot.dart';
 import 'package:currency_converter_flutter/data/repositories/exchange_rate_repository.dart';
@@ -88,7 +87,7 @@ void main() {
       expect(result.getRate('EUR')!.ratePerUnit, Decimal.parse('18.9000'));
     });
 
-    test('throws CacheNotFoundException when network fails and no cache exists', () async {
+    test('falls back to built-in seed data when network fails and no cache exists', () async {
       final mockClient = MockClient((request) async {
         throw http.ClientException('No Internet');
       });
@@ -98,10 +97,13 @@ void main() {
         cacheService: cacheService,
       );
 
-      expect(
-        () => repo.getLatestRates(),
-        throwsA(isA<CacheNotFoundException>()),
-      );
+      // Repository now has built-in seed data (real BNM rates for 18.11.2026)
+      // so it should NOT throw — it returns seed snapshot marked as from cache.
+      final result = await repo.getLatestRates();
+      expect(result.isFromCache, isTrue);
+      // EUR and USD must be present in seed data
+      expect(result.getRate('EUR'), isNotNull);
+      expect(result.getRate('USD'), isNotNull);
     });
   });
 }
